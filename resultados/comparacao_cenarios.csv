@@ -1,0 +1,11 @@
+N,Descricao,Esp,Antes,Depois,Erro_Antes,Erro_Depois,Melhora
+1,"Excelente: renda alta, score otimo, baixo comp",7.0,7.4,7.0,0.4,0.0,0.4
+2,"Pessimo: renda baixa, score ruim, comp alto",93.0,92.5,92.5,0.5,0.5,-0.0
+3,Tipico: renda e score medios,50.0,50.0,47.0,0.0,3.0,-3.0
+4,"Fronteiricio baixo-medio: score bom, comp mod",35.0,44.7,36.3,9.7,1.3,8.4
+5,"Fronteiricio medio-alto: score ruim, comp alto",70.0,75.0,70.0,5.0,0.0,5.0
+6,Conflitante: renda alta mas score muito ruim,55.0,68.6,55.0,13.6,0.0,13.6
+7,Conflitante: renda baixa mas score bom e tempo longo,25.0,16.9,25.0,8.1,0.0,8.1
+8,Critico baixo: todos favoraveis,7.0,6.9,6.9,0.1,0.1,-0.0
+9,Critico alto: todos desfavoraveis,93.0,93.2,93.0,0.2,0.0,0.2
+10,Mitigado: tempo longo compensa score regular,28.0,43.9,28.0,15.9,0.0,15.9

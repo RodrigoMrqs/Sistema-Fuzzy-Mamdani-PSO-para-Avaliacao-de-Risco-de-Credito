@@ -1,0 +1,8 @@
+numpy
+scikit-fuzzy
+matplotlib
+scipy
+pandas
+nbformat
+jupyter
+ipykernel
