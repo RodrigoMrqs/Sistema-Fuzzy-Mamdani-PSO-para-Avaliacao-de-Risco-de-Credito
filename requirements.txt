@@ -6,3 +6,4 @@ pandas
 nbformat
 jupyter
 ipykernel
+streamlit
