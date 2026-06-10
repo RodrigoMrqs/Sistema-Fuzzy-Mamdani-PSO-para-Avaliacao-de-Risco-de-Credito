@@ -126,7 +126,11 @@ def trimf_val(x, a, b, c):
 
 
 def mamdani_infer(renda_v, comp_v, score_v, tempo_v, params=None):
-    """Mamdani inference → (risk_score, active_rules, aggregated_output)."""
+    """Mamdani inference → (risk_score, all_rules, aggregated_output).
+
+    all_rules: list of (rule_num, forca, termo, antecedente) for all 18 rules,
+               sorted by force descending. Force = 0 for inactive rules.
+    """
     p = params if params is not None else PARAMS
 
     mr = {k: trimf_val(renda_v, *p[f"renda_{k}"])
@@ -160,17 +164,16 @@ def mamdani_infer(renda_v, comp_v, score_v, tempo_v, params=None):
     ]
 
     agg = np.zeros_like(U_RISCO)
-    active = []
-    for forca, termo, desc in RULES:
-        if forca > 0.001:
-            active.append((forca, termo, desc))
+    all_rules = []
+    for num, (forca, termo, desc) in enumerate(RULES, 1):
+        all_rules.append((num, forca, termo, desc))
         if forca > 0:
             agg = np.maximum(agg, np.minimum(forca, fuzz.trimf(U_RISCO, p[f"risco_{termo}"])))
 
     total = np.trapz(agg, U_RISCO)
     result = float(np.trapz(agg * U_RISCO, U_RISCO) / total) if total > 1e-10 else 50.0
-    active.sort(key=lambda x: -x[0])
-    return result, active, agg
+    all_rules.sort(key=lambda x: -x[1])
+    return result, all_rules, agg
 
 
 def risk_label_info(score):
@@ -352,15 +355,16 @@ with tab_avaliacao:
 
     # ── Result ───────────────────────────────────────────────────────────────
     with col_result:
-        risk_score, active_rules, agg_output = mamdani_infer(renda, comp, score_cr, tempo)
+        risk_score, all_rules, agg_output = mamdani_infer(renda, comp, score_cr, tempo)
         label, color = risk_label_info(risk_score)
+        n_active = sum(1 for _, f, _, _ in all_rules if f > 0)
 
         st.subheader("Resultado da Análise")
 
         m1, m2, m3 = st.columns(3)
         m1.metric("Índice de Risco", f"{risk_score:.1f} / 100")
         m2.metric("Classificação", label)
-        m3.metric("Regras ativadas", f"{len(active_rules)} / 18")
+        m3.metric("Regras ativadas", f"{n_active} / 18")
 
         st.pyplot(make_gauge(risk_score), use_container_width=True)
 
@@ -393,20 +397,43 @@ with tab_avaliacao:
     col_rules, col_mfs = st.columns([1, 2])
 
     with col_rules:
-        with st.expander(f"📜 Regras Fuzzy Ativadas ({len(active_rules)} / 18)", expanded=True):
-            if active_rules:
-                RISK_COLORS_PT = {
-                    "muito_baixo": "🟢", "baixo": "🟢",
-                    "medio": "🟡", "alto": "🟠", "muito_alto": "🔴",
-                }
-                for forca, termo, desc in active_rules:
-                    icon = RISK_COLORS_PT.get(termo, "⚪")
-                    st.markdown(
-                        f"{icon} **SE** {desc}  \n"
-                        f"→ **Risco {LABELS_PT.get(termo, termo)}** *(força: {forca:.3f})*"
+        RISK_ICONS = {
+            "muito_baixo": "🟢", "baixo": "🟢",
+            "medio": "🟡", "alto": "🟠", "muito_alto": "🔴",
+        }
+        with st.expander(f"📜 Base de Regras Completa — {n_active}/18 ativas", expanded=True):
+            rows = []
+            for num, forca, termo, desc in all_rules:
+                rows.append({
+                    "#": num,
+                    "Antecedente (SE)": desc,
+                    "Consequente": LABELS_PT.get(termo, termo),
+                    "Forca": round(forca, 4),
+                })
+            df_rules = pd.DataFrame(rows)
+
+            def _style_rule_row(row):
+                if row["Forca"] > 0:
+                    bg = {"muito_baixo": "#1a9641", "baixo": "#52b947",
+                          "medio": "#e8a820", "alto": "#e05c1a", "muito_alto": "#d73027"}
+                    termo_key = next(
+                        (k for k, v in LABELS_PT.items() if v == row["Consequente"]), ""
                     )
-            else:
-                st.info("Nenhuma regra ativada com força > 0,5%.")
+                    c = bg.get(termo_key, "#4e9af1")
+                    return [f"background-color:{c}22; font-weight:600"] * len(row)
+                return ["color:#555; font-style:italic"] * len(row)
+
+            def _style_forca(val):
+                if val > 0:
+                    return "font-weight:700; color:#4e9af1"
+                return "color:#444"
+
+            styled = (
+                df_rules.style
+                .apply(_style_rule_row, axis=1)
+                .map(_style_forca, subset=["Forca"])
+            )
+            st.dataframe(styled, use_container_width=True, hide_index=True, height=520)
 
     with col_mfs:
         st.markdown("**Ativação das Funções de Pertinência**")
